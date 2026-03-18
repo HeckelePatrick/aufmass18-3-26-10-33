@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Aufmaß – Heckele Raumausstatter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0ee; color: #222; font-size: 14px; }
+
+.page-header {
+  background: #1a1a1a; border-bottom: 3px solid #C0392B;
+  padding: 12px 28px; display: flex; align-items: center; justify-content: space-between;
+}
+.logo-box { background: #C0392B; padding: 6px 13px; border-radius: 3px; }
+.logo-box span { color: white; font-weight: 700; font-size: 19px; letter-spacing: 2px; }
+.logo-sub { color: #aaa; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; margin-top: 3px; }
+.logo-wrap { display: flex; flex-direction: column; }
+.header-title { color: white; font-size: 22px; font-weight: 300; letter-spacing: 5px; text-transform: uppercase; }
+
+.container { max-width: 980px; margin: 24px auto; padding: 0 16px 48px; }
+.card { background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.09); overflow: hidden; margin-bottom: 16px; }
+.card-head { background: #f5f5f5; border-bottom: 1px solid #e5e5e5; padding: 9px 20px; }
+.card-head h2 { font-size: 11px; font-weight: 700; color: #999; letter-spacing: 1.5px; text-transform: uppercase; }
+.card-body { padding: 16px 20px; }
+
+.meta-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.field label { display: block; font-size: 11px; font-weight: 700; color: #aaa; margin-bottom: 5px; letter-spacing: 0.5px; text-transform: uppercase; }
+.field input, .field textarea {
+  width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 8px 10px;
+  font-size: 16px; color: #222; background: white; transition: border 0.15s; font-family: inherit; -webkit-appearance: none;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: #C0392B; box-shadow: 0 0 0 2px rgba(192,57,43,0.1); }
+.sig-hint { font-size: 10px; color: #ccc; margin-top: 3px; }
+
+.room-list { display: flex; flex-direction: column; gap: 10px; padding: 14px 18px; }
+.room-item { border: 1px solid #e5e5e5; border-radius: 7px; overflow: hidden; }
+.room-top {
+  display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+  background: #fafafa; border-bottom: 1px solid #e5e5e5; cursor: pointer; user-select: none;
+}
+.room-top:hover { background: #f3f3f3; }
+.room-num { width: 26px; height: 26px; border-radius: 50%; background: #C0392B; color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.room-name-inp { flex: 1; border: none; background: transparent; font-size: 14px; font-weight: 600; color: #333; outline: none; font-family: inherit; }
+.room-name-inp::placeholder { color: #ccc; font-weight: 400; }
+.room-actions { display: flex; align-items: center; gap: 6px; }
+.toggle-btn { font-size: 13px; color: #bbb; cursor: pointer; padding: 4px 10px; border-radius: 4px; touch-action: manipulation; -webkit-user-select: none; }
+.toggle-btn:hover { background: #eee; }
+.del-room-btn { font-size: 13px; color: #ddd; cursor: pointer; padding: 4px 10px; border-radius: 4px; touch-action: manipulation; -webkit-user-select: none; }
+.del-room-btn:hover, .del-room-btn:active { background: #fee; color: #C0392B; }
+.room-body { padding: 0; }
+.collapsed .room-body { display: none; }
+
+.checks-row { padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid #f5f5f5; background: #fafafa; }
+.checks-label { font-size: 10px; font-weight: 700; color: #bbb; text-transform: uppercase; letter-spacing: 0.5px; }
+.check-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #666; cursor: pointer; }
+.check-item input[type=checkbox] { accent-color: #C0392B; cursor: pointer; }
+
+.meas-table { width: 100%; border-collapse: collapse; }
+.meas-table th { background: #f5f5f5; font-size: 10px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 0.5px; padding: 7px 8px; border-bottom: 1px solid #e5e5e5; text-align: center; white-space: nowrap; }
+.meas-table td { padding: 5px 6px; border-bottom: 1px solid #f2f2f2; vertical-align: middle; }
+.pos-label { font-size: 11px; color: #bbb; text-align: center; }
+.meas-inp { width: 100%; border: 1px solid #e5e5e5; border-radius: 4px; padding: 8px 7px; font-size: 16px; text-align: right; color: #222; background: white; font-family: inherit; min-width: 70px; -webkit-appearance: none; }
+.meas-inp:focus { outline: none; border-color: #C0392B; }
+.hint-inp { width: 100%; border: 1px solid #e5e5e5; border-radius: 4px; padding: 8px 7px; font-size: 16px; color: #555; background: white; font-family: inherit; -webkit-appearance: none; }
+.hint-inp:focus { outline: none; border-color: #C0392B; }
+.formula-inp { font-family: monospace !important; font-size: 14px !important; background: #f0f8ff !important; border-color: #90caf9 !important; text-align: left !important; }
+.formula-inp:focus { border-color: #1565c0 !important; background: white !important; }
+.calc-cell { background: #fff8f7; border: 1px solid #f0c5c0; border-radius: 4px; padding: 5px 8px; font-size: 13px; font-weight: 700; color: #C0392B; text-align: right; white-space: nowrap; display: block; }
+.unit-txt { font-size: 10px; font-weight: 400; color: #e08070; margin-left: 2px; }
+.del-row-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #eee; background: white; color: #ddd; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; -webkit-appearance: none; touch-action: manipulation; }
+.del-row-btn:hover, .del-row-btn:active { background: #fee; border-color: #f0c5c0; color: #C0392B; }
+.subtotal-row td { background: #fff5f4 !important; border-top: 1px solid #f0c5c0 !important; border-bottom: none !important; }
+.sub-label { font-size: 11px; font-weight: 700; color: #C0392B; text-align: right; padding-right: 8px !important; }
+.add-row-btn { width: 100%; padding: 12px; border: none; background: #fafafa; color: #C0392B; font-size: 14px; font-weight: 600; cursor: pointer; border-top: 1px dashed #f0c5c0; font-family: inherit; -webkit-appearance: none; touch-action: manipulation; }
+.add-row-btn:hover, .add-row-btn:active { background: #fff0ee; }
+
+/* IMAGE SECTION */
+.img-section { padding: 12px 14px; border-top: 1px solid #f0f0f0; background: #fafafa; }
+.img-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.img-section-label { font-size: 11px; font-weight: 700; color: #999; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+.upload-btn-label { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; background: white; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; font-weight: 600; color: #555; cursor: pointer; -webkit-appearance: none; touch-action: manipulation; }
+.upload-btn-label:hover, .upload-btn-label:active { border-color: #C0392B; color: #C0392B; background: #fff8f7; }
+.upload-btn-label input[type=file] { display: none; }
+.img-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+.img-thumb-wrap { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; border: 1px solid #e5e5e5; background: #f5f5f5; }
+.img-thumb-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-del-btn { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; border-radius: 50%; background: rgba(0,0,0,0.55); color: white; border: none; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+.img-del-btn:hover { background: #C0392B; }
+.img-caption-inp { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.5); border: none; color: white; font-size: 10px; padding: 3px 5px; font-family: inherit; width: 100%; }
+.img-caption-inp::placeholder { color: rgba(255,255,255,0.6); }
+.no-images { font-size: 12px; color: #ccc; text-align: center; padding: 12px 0; grid-column: 1/-1; }
+.art-sel { width: 100%; border: 2px solid #1565c0; border-radius: 5px; padding: 6px 4px; font-size: 14px; color: #222; background: white; font-family: inherit; -webkit-appearance: none; font-weight: 600; cursor: pointer; touch-action: manipulation; text-align: center; }
+.unit-toggle { display: flex; border-radius: 5px; overflow: hidden; border: 1px solid #ddd; }
+.unit-btn { flex: 1; padding: 6px 4px; border: none; background: white; font-size: 13px; font-weight: 700; color: #bbb; cursor: pointer; font-family: inherit; -webkit-appearance: none; touch-action: manipulation; transition: all 0.15s; }
+.unit-btn.active { background: #C0392B; color: white; }
+
+.add-room-wrap { padding: 0 18px 16px; }
+.add-room-btn { width: 100%; padding: 14px; border: 2px dashed #ddd; border-radius: 7px; background: transparent; color: #bbb; font-size: 15px; cursor: pointer; font-family: inherit; -webkit-appearance: none; touch-action: manipulation; }
+.add-room-btn:hover, .add-room-btn:active { border-color: #C0392B; color: #C0392B; background: #fff8f7; }
+
+.totals-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 16px 18px; background: #fff8f7; border-top: 2px solid #C0392B; }
+.total-block { text-align: center; padding: 12px 8px; background: white; border-radius: 7px; border: 1px solid #f0c5c0; }
+.total-label { font-size: 10px; color: #bbb; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.total-val { font-size: 26px; font-weight: 700; color: #C0392B; }
+.total-unit { font-size: 12px; color: #e08070; margin-left: 3px; }
+
+.email-field { margin-bottom: 10px; }
+.email-field label { display: block; font-size: 11px; font-weight: 700; color: #aaa; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+.email-field input { width: 100%; border: 1px solid #ddd; border-radius: 5px; padding: 8px 10px; font-size: 16px; color: #222; background: white; font-family: inherit; -webkit-appearance: none; }
+.email-field input:focus { outline: none; border-color: #C0392B; }
+
+.actions-grid { display: grid; grid-template-columns: auto 1fr 1fr; gap: 10px; padding-top: 8px; }
+.btn-print { padding: 14px 20px; background: #1a1a1a; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; -webkit-appearance: none; touch-action: manipulation; width: 100%; }
+.btn-print:hover { background: #333; }
+.btn-submit { flex: 1; padding: 14px 20px; background: #C0392B; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-appearance: none; touch-action: manipulation; }
+.btn-submit:hover, .btn-submit:active { background: #a93226; }
+.btn-submit:disabled { background: #ccc; cursor: not-allowed; }
+.btn-email { flex: 1; padding: 14px 20px; background: #1565c0; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; -webkit-appearance: none; touch-action: manipulation; }
+.btn-email:hover, .btn-email:active { background: #0d47a1; }
+.btn-email:disabled { background: #ccc; cursor: not-allowed; }
+
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a1a; color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 500; display: none; align-items: center; gap: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); z-index: 999; border-left: 4px solid #C0392B; white-space: nowrap; }
+.toast.show { display: flex; }
+
+* { -webkit-tap-highlight-color: rgba(192,57,43,0.15); }
+
+@media (max-width: 680px) {
+  .meta-grid { grid-template-columns: 1fr; }
+  .totals-bar { grid-template-columns: 1fr; }
+  .hint-col { display: none; }
+  .img-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+  .actions-grid { grid-template-columns: 1fr 1fr; }
+  .btn-print-wrap { grid-column: 1 / -1; }
+}
+</style>
+</head>
+<body>
+
+<header class="page-header">
+  <div class="logo-wrap">
+    <div class="logo-box"><span>HECKELE</span></div>
+    <span class="logo-sub">Raumausstatter</span>
+  </div>
+  <div class="header-title">Aufmaß</div>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-head"><h2>Projektdaten</h2></div>
+    <div class="card-body">
+      <div class="meta-grid">
+        <div class="field">
+          <label>Bauvorhaben</label>
+          <input type="text" id="bv" placeholder="Projektname / Adresse...">
+        </div>
+        <div class="field">
+          <label>Datum</label>
+          <input type="date" id="datum">
+        </div>
+        <div class="field">
+          <label>Mitarbeiter / Name</label>
+          <input type="text" id="ma" placeholder="Name eingeben...">
+          <div class="sig-hint">Unterschrift verantwortlicher Mitarbeiter</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Raummessungen</h2></div>
+    <div id="room-list" class="room-list"></div>
+    <div class="add-room-wrap">
+      <button class="add-room-btn" onclick="addRoom()">+ Raum hinzufügen</button>
+    </div>
+    <div class="totals-bar" id="totals-bar" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+      <div class="total-block" style="grid-column:1/-1;text-align:center;color:#bbb;font-size:13px;">Noch keine Maße eingetragen</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Sonstiges / Bemerkungen</h2></div>
+    <div class="card-body">
+      <div class="field">
+        <textarea id="notes" rows="3" placeholder="Hinweise, Besonderheiten, Sonderwünsche..."></textarea>
+      </div>
+      <div class="email-field" style="margin-top:14px;">
+        <label>E-Mail Empfänger</label>
+        <input type="email" id="email-to" placeholder="z.B. buero@heckele.de">
+      </div>
+      <div class="actions-grid">
+        <div class="btn-print-wrap">
+          <button class="btn-print" onclick="window.print()">🖨 Drucken</button>
+        </div>
+        <button class="btn-submit" id="submitBtn" onclick="submitForm()">
+          <span>⬇</span><span id="submitText">PDF herunterladen</span>
+        </button>
+        <button class="btn-email" id="emailBtn" onclick="submitAndEmail()">
+          <span>✉</span><span id="emailText">Per E-Mail senden</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"><span>✓</span><span id="toastMsg">Fertig!</span></div>
+
+<script>
+let roomCount = 0, rowCounter = 0;
+const state = {};
+
+function fmt(n) {
+  if (typeof n !== 'number' || isNaN(n)) n = 0;
+  try {
+    return n.toLocaleString('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2});
+  } catch(e) {
+    // iOS Safari fallback
+    return n.toFixed(2).replace('.', ',');
+  }
+}
+function fmtDate(v) { if (!v) return ''; const [y,m,d]=v.split('-'); return `${d}.${m}.${y}`; }
+
+/* ── ADD ROOM ── */
+function addRoom() {
+  roomCount++;
+  const rId = roomCount;
+  state[rId] = { rows: {}, images: [] };
+  const div = document.createElement('div');
+  div.className = 'room-item';
+  div.id = 'room-' + rId;
+  div.innerHTML = `
+    <div class="room-top" onclick="toggleRoom(${rId})">
+      <div class="room-num">${rId}</div>
+      <input class="room-name-inp" type="text" placeholder="Raumbezeichnung (z.B. Wohnzimmer)..."
+        onclick="event.stopPropagation()" id="rname-${rId}">
+      <div class="room-actions">
+        <span class="toggle-btn" id="icon-${rId}" onclick="event.stopPropagation();toggleRoom(${rId})">▲</span>
+        <span class="del-room-btn" onclick="event.stopPropagation();delRoom(${rId})">✕</span>
+      </div>
+    </div>
+    <div class="room-body" id="rbody-${rId}">
+      <div class="checks-row">
+        <span class="checks-label">Art:</span>
+        <label class="check-item"><input type="checkbox" data-room="${rId}" value="Boden"> Boden</label>
+        <label class="check-item"><input type="checkbox" data-room="${rId}" value="Sockel"> Sockel</label>
+        <label class="check-item"><input type="checkbox" data-room="${rId}" value="Silikon"> Silikon</label>
+        <label class="check-item"><input type="checkbox" data-room="${rId}" value="Schiene"> Schiene</label>
+      </div>
+      <table class="meas-table">
+        <thead>
+          <tr>
+            <th style="width:28px">Pos</th>
+            <th style="min-width:95px">Art</th>
+            <th style="width:58px">Einheit</th>
+            <th style="min-width:72px">Maß 1</th>
+            <th style="min-width:72px">Maß 2</th>
+            <th>Ergebnis</th>
+            <th class="hint-col" style="min-width:110px">Hinweis</th>
+            <th style="width:28px"></th>
+          </tr>
+        </thead>
+        <tbody id="rows-${rId}"></tbody>
+        <tfoot id="subtotals-${rId}">
+        </tfoot>
+      </table>
+      <button class="add-row-btn" onclick="addRow(${rId})">+ Maßzeile hinzufügen</button>
+      <div class="img-section">
+        <div class="img-section-head">
+          <div class="img-section-label"><span style="font-size:15px">📷</span> Fotos zum Raum</div>
+          <label class="upload-btn-label">
+            <span>+</span> Bild hinzufügen
+            <input type="file" accept="image/*" multiple onchange="handleImages(${rId}, this)">
+          </label>
+        </div>
+        <div class="img-grid" id="img-grid-${rId}">
+          <div class="no-images">Noch keine Bilder hinterlegt</div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('room-list').appendChild(div);
+  addRow(rId);
+  addRow(rId);
+}
+
+/* ── IMAGES ── */
+function handleImages(rId, input) {
+  Array.from(input.files).forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const imgId = Date.now() + Math.random();
+      state[rId].images.push({ id: imgId, dataUrl: e.target.result, caption: '' });
+      renderImageGrid(rId);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+function renderImageGrid(rId) {
+  const grid = document.getElementById('img-grid-' + rId);
+  const imgs = state[rId].images;
+  grid.innerHTML = '';
+  if (!imgs.length) { grid.innerHTML = '<div class="no-images">Noch keine Bilder hinterlegt</div>'; return; }
+  imgs.forEach((img, idx) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'img-thumb-wrap';
+    wrap.innerHTML = `
+      <img src="${img.dataUrl}" alt="Raumbild ${idx+1}">
+      <button class="img-del-btn" onclick="delImage(${rId},'${img.id}')">✕</button>
+      <input class="img-caption-inp" type="text" placeholder="Beschriftung..."
+        value="${img.caption}" oninput="updateCaption(${rId},'${img.id}',this.value)">
+    `;
+    grid.appendChild(wrap);
+  });
+}
+
+function updateCaption(rId, imgId, val) {
+  const img = state[rId].images.find(i => i.id == imgId);
+  if (img) img.caption = val;
+}
+
+function delImage(rId, imgId) {
+  state[rId].images = state[rId].images.filter(i => i.id != imgId);
+  renderImageGrid(rId);
+}
+
+/* ── ROWS ── */
+const ARTEN = ['Boden','Sockel','Silikon','Schiene'];
+const ARTEN_COLORS = {'Boden':'#1565c0','Sockel':'#C0392B','Silikon':'#2e7d32','Schiene':'#6a1b9a'};
+
+function addRow(rId) {
+  rowCounter++;
+  const rowId = rowCounter;
+  state[rId].rows[rowId] = { val:0, m1:0, m2:0, art:'Boden', einheit:'m2', hint:'' };
+  const pos = Object.keys(state[rId].rows).length;
+  const tbody = document.getElementById('rows-' + rId);
+  const tr = document.createElement('tr');
+  tr.id = `row-${rId}-${rowId}`;
+  const artOpts = ARTEN.map(a=>`<option value="${a}">${a}</option>`).join('');
+  tr.innerHTML = `
+    <td class="pos-label">${pos}</td>
+    <td>
+      <select class="art-sel" id="art-${rId}-${rowId}" onchange="changeArt(${rId},${rowId})">
+        ${artOpts}
+      </select>
+    </td>
+    <td>
+      <div class="unit-toggle">
+        <button class="unit-btn active" id="u-m2-${rId}-${rowId}" onclick="setEinheit(${rId},${rowId},'m2')">m²</button>
+        <button class="unit-btn" id="u-m-${rId}-${rowId}" onclick="setEinheit(${rId},${rowId},'m')">m</button>
+      </div>
+    </td>
+    <td><input class="meas-inp" type="number" step="0.01" min="0" placeholder="0,00"
+      id="m1-${rId}-${rowId}" oninput="calcRow(${rId},${rowId})" inputmode="decimal"></td>
+    <td><input class="meas-inp" type="number" step="0.01" min="0" placeholder="0,00"
+      id="m2-${rId}-${rowId}" oninput="calcRow(${rId},${rowId})" inputmode="decimal"></td>
+    <td><span class="calc-cell" id="res-${rId}-${rowId}">– <span class="unit-txt">m²</span></span></td>
+    <td class="hint-col"><input class="hint-inp" type="text" placeholder="Hinweis..."
+      id="hint-${rId}-${rowId}" oninput="state[${rId}].rows[${rowId}].hint=this.value"></td>
+    <td><button class="del-row-btn" onclick="delRow(${rId},${rowId})">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  updateArtColor(rId, rowId);
+}
+
+function changeArt(rId, rowId) {
+  state[rId].rows[rowId].art = document.getElementById(`art-${rId}-${rowId}`).value;
+  updateArtColor(rId, rowId);
+  updateSubtotal(rId); updateTotals();
+}
+
+function updateArtColor(rId, rowId) {
+  const art = state[rId].rows[rowId]?.art || 'Boden';
+  const sel = document.getElementById(`art-${rId}-${rowId}`);
+  if (sel) sel.style.borderColor = ARTEN_COLORS[art] || '#ddd';
+}
+
+function setEinheit(rId, rowId, einheit) {
+  state[rId].rows[rowId].einheit = einheit;
+  const btn_m2 = document.getElementById(`u-m2-${rId}-${rowId}`);
+  const btn_m  = document.getElementById(`u-m-${rId}-${rowId}`);
+  const m1inp  = document.getElementById(`m1-${rId}-${rowId}`);
+  const m2inp  = document.getElementById(`m2-${rId}-${rowId}`);
+  if (einheit === 'm2') {
+    btn_m2.classList.add('active'); btn_m.classList.remove('active');
+    // Switch m1 back to number input
+    m1inp.type = 'number'; m1inp.placeholder = '0,00';
+    m1inp.classList.remove('formula-inp');
+    m2inp.style.opacity='1'; m2inp.disabled=false; m2inp.placeholder='0,00';
+    // Restore m1 value if it was a simple number
+    const stored = state[rId].rows[rowId].m1;
+    if (stored && isFinite(stored)) m1inp.value = stored;
+  } else {
+    btn_m.classList.add('active'); btn_m2.classList.remove('active');
+    // Switch m1 to text input for formula support
+    m1inp.type = 'text'; m1inp.placeholder = 'z.B. 1+1,12+1,5';
+    m1inp.classList.add('formula-inp');
+    m2inp.style.opacity='0.25'; m2inp.disabled=true;
+    m2inp.value=''; state[rId].rows[rowId].m2=0;
+    m2inp.placeholder='–';
+    // Show current value as text
+    const stored = state[rId].rows[rowId].m1;
+    if (stored && isFinite(stored) && stored > 0) m1inp.value = String(stored).replace('.', ',');
+  }
+  calcRow(rId, rowId);
+}
+
+
+
+function parseFormula(raw) {
+  if (!raw || !raw.trim()) return 0;
+  // normalize: commas to dots, remove spaces
+  let s = raw.trim().replace(/,/g, '.').replace(/\s+/g, '');
+  // only allow safe characters
+  if (!/^[\d+\-*/.()]+$/.test(s)) return 0;
+  try {
+    const result = Function('"use strict"; return (' + s + ')')();
+    return (typeof result === 'number' && isFinite(result) && result >= 0) ? Math.round(result * 10000) / 10000 : 0;
+  } catch(e) { return 0; }
+}
+
+function calcRow(rId, rowId) {
+  const row = state[rId].rows[rowId];
+  const einheit = row.einheit || 'm2';
+  const m1inp = document.getElementById(`m1-${rId}-${rowId}`);
+  const m2inp = document.getElementById(`m2-${rId}-${rowId}`);
+
+  let m1, m2;
+  if (einheit === 'm') {
+    // Use formula parser for m-mode
+    m1 = parseFormula(m1inp?.value || '');
+    m2 = 0;
+  } else {
+    m1 = parseFloat(m1inp?.value) || 0;
+    m2 = parseFloat(m2inp?.value) || 0;
+  }
+
+  const val = isFinite(einheit==='m2' ? m1*m2 : m1) ? (einheit==='m2' ? m1*m2 : m1) : 0;
+  state[rId].rows[rowId].val = val;
+  state[rId].rows[rowId].m1 = m1;
+  state[rId].rows[rowId].m2 = m2;
+
+  const unitLabel = einheit==='m2' ? 'm²' : 'm';
+
+  // For m-mode with formula, show breakdown
+  let resHTML = `${fmt(val)} <span class="unit-txt">${unitLabel}</span>`;
+  if (einheit === 'm' && m1inp?.value && m1inp.value.match(/[+\-*\/]/)) {
+    resHTML += `<div style="font-size:10px;color:#888;text-align:right;margin-top:2px;">${m1inp.value.replace(/,/g,'.')} = ${fmt(val)}</div>`;
+  }
+
+  const resEl = document.getElementById(`res-${rId}-${rowId}`);
+  if (resEl) resEl.innerHTML = resHTML;
+  updateSubtotal(rId); updateTotals();
+}
+
+function updateSubtotal(rId) {
+  const sums = {};
+  ARTEN.forEach(a => sums[a]={m2:0,m:0});
+  for (const r of Object.values(state[rId].rows)) {
+    const art=r.art||'Boden';
+    if(r.einheit==='m2') sums[art].m2+=r.val; else sums[art].m+=r.val;
+  }
+  const tfoot=document.getElementById(`subtotals-${rId}`);
+  if(!tfoot) return;
+  tfoot.innerHTML='';
+  let any=false;
+  ARTEN.forEach(art=>{
+    const v2=+(sums[art].m2)||0, vm=+(sums[art].m)||0;
+    if(v2>0||vm>0){
+      any=true;
+      const color=ARTEN_COLORS[art]||'#C0392B';
+      let valStr='';
+      if(v2>0) valStr+=`${fmt(v2)} m²`;
+      if(v2>0&&vm>0) valStr+=' + ';
+      if(vm>0) valStr+=`${fmt(vm)} m`;
+      const tr=document.createElement('tr');
+      tr.className='subtotal-row';
+      tr.innerHTML=`
+        <td colspan="4" class="sub-label" style="color:${color}">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:5px;vertical-align:middle;"></span>Σ ${art}
+        </td>
+        <td colspan="2"><span class="calc-cell" style="border-color:${color}30;color:${color}">${valStr}</span></td>
+        <td class="hint-col"></td><td></td>`;
+      tfoot.appendChild(tr);
+    }
+  });
+  if(!any){
+    const tr=document.createElement('tr');
+    tr.className='subtotal-row';
+    tr.innerHTML=`<td colspan="8" class="sub-label" style="color:#ccc;">Noch keine Werte</td>`;
+    tfoot.appendChild(tr);
+  }
+}
+
+function updateTotals() {
+  const grand={};
+  ARTEN.forEach(a=>grand[a]={m2:0,m:0});
+  for(const room of Object.values(state))
+    for(const r of Object.values(room.rows)){
+      const art=r.art||'Boden';
+      if(r.einheit==='m2') grand[art].m2+=r.val; else grand[art].m+=r.val;
+    }
+  const bar=document.getElementById('totals-bar');
+  if(!bar) return;
+  bar.innerHTML='';
+  let any=false;
+  ARTEN.forEach(art=>{
+    const v2=+(grand[art].m2)||0, vm=+(grand[art].m)||0;
+    if(v2>0||vm>0){
+      any=true;
+      const color=ARTEN_COLORS[art];
+      let inner='';
+      if(v2>0) inner+=`<div><span class="total-val" style="color:${color}">${fmt(v2)}</span><span class="total-unit">m²</span></div>`;
+      if(vm>0) inner+=`<div><span class="total-val" style="color:${color}">${fmt(vm)}</span><span class="total-unit">m</span></div>`;
+      bar.innerHTML+=`
+        <div class="total-block" style="border-color:${color}30;">
+          <div class="total-label" style="color:${color}">
+            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle;"></span>${art}
+          </div>${inner}
+        </div>`;
+    }
+  });
+  if(!any) bar.innerHTML=`<div class="total-block" style="grid-column:1/-1;text-align:center;color:#bbb;font-size:13px;">Noch keine Maße eingetragen</div>`;
+}
+
+function delRow(rId, rowId) {
+  if (Object.keys(state[rId].rows).length<=1) { alert('Mindestens eine Maßzeile muss vorhanden sein.'); return; }
+  delete state[rId].rows[rowId];
+  document.getElementById(`row-${rId}-${rowId}`)?.remove();
+  updateSubtotal(rId); updateTotals(); reindexRows(rId);
+}
+
+function delRoom(rId) {
+  if (!confirm('Raum wirklich löschen?')) return;
+  delete state[rId];
+  document.getElementById('room-'+rId)?.remove();
+  updateTotals();
+}
+
+function reindexRows(rId) {
+  document.querySelectorAll(`#rows-${rId} tr`).forEach((tr,i)=>{
+    const c=tr.querySelector('.pos-label'); if(c) c.textContent=i+1;
+  });
+}
+
+function toggleRoom(rId) {
+  const card=document.getElementById('room-'+rId);
+  const icon=document.getElementById('icon-'+rId);
+  card.classList.toggle('collapsed');
+  icon.textContent=card.classList.contains('collapsed')?'▼':'▲';
+}
+
+/* ── EMAIL BODY ── */
+function buildEmailBody(bv, datum, ma, notes) {
+  let body = `AUFMASS – HECKELE RAUMAUSSTATTER\n${'='.repeat(40)}\n\n`;
+  body += `Bauvorhaben: ${bv}\nDatum: ${fmtDate(datum)}\nMitarbeiter: ${ma}\n\n`;
+  for (const [rIdStr, room] of Object.entries(state)) {
+    const rId = parseInt(rIdStr);
+    const rname = document.getElementById('rname-'+rId)?.value || `Raum ${rId}`;
+    const checks = [...document.querySelectorAll(`input[data-room="${rId}"]:checked`)].map(c=>c.value);
+    const rows = Object.entries(room.rows);
+    if (!rows.length) continue;
+    body += `${'─'.repeat(35)}\n${rname.toUpperCase()}`;
+    if (checks.length) body += ` (${checks.join(', ')})`;
+    body += '\n';
+    const artSums={};
+    rows.forEach(([rowId,row],i)=>{
+      const hint=document.getElementById(`hint-${rId}-${rowId}`)?.value||'';
+      const art=row.art||'Boden'; const einheit=row.einheit||'m2';
+      const unitLabel=einheit==='m2'?'m²':'m';
+      let line=`  Pos ${i+1}: [${art}] `;
+      const em1=isFinite(row.m1)?row.m1:0, em2=isFinite(row.m2)?row.m2:0, ev=isFinite(row.val)?row.val:0;
+      if(einheit==='m2') line+=`${em1?fmt(em1):'–'} × ${em2?fmt(em2):'–'} = ${fmt(ev)} m²`;
+      else line+=`${em1?fmt(em1):'–'} = ${fmt(ev)} m`;
+      if(hint) line+=` (${hint})`;
+      body+=line+'\n';
+      if(!artSums[art]) artSums[art]={m2:0,m:0};
+      if(einheit==='m2') artSums[art].m2+=row.val; else artSums[art].m+=row.val;
+    });
+    body+='  Zwischensummen:\n';
+    Object.entries(artSums).forEach(([art,sv])=>{
+      let s=`  → ${art}: `;
+      if(sv.m2>0) s+=`${fmt(sv.m2)} m²`;
+      if(sv.m2>0&&sv.m>0) s+=' + ';
+      if(sv.m>0) s+=`${fmt(sv.m)} m`;
+      body+=s+'\n';
+    });
+    body+='\n';
+  }
+  body+=`${'='.repeat(40)}\nGESAMT:\n`;
+  const grand2={};
+  ARTEN.forEach(a=>grand2[a]={m2:0,m:0});
+  for(const room of Object.values(state)) for(const r of Object.values(room.rows)){
+    const art=r.art||'Boden';
+    const safeVal=isFinite(r.val)?r.val:0;
+    if(r.einheit==='m2') grand2[art].m2+=safeVal; else grand2[art].m+=safeVal;
+  }
+  ARTEN.forEach(art=>{
+    const v2=grand2[art].m2||0, vm=grand2[art].m||0;
+    if(v2>0||vm>0){
+      let s=`  ${art}: `;
+      if(v2>0) s+=`${fmt(v2)} m²`;
+      if(v2>0&&vm>0) s+=' + ';
+      if(vm>0) s+=`${fmt(vm)} m`;
+      body+=s+'\n';
+    }
+  });
+  if (notes) body += `\nBemerkungen:\n${notes}\n`;
+  body += '\n– Heckele Aufmaß-Formular';
+  return body;
+}
+
+/* ── PDF ── */
+function generatePDF(bv, datum, ma, notes) {
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,ML=14,MR=14,UW=W-ML-MR;
+  let y=0;
+  const RED=[192,57,43],DARK=[26,26,26],GRAY=[74,74,74],LGRAY=[245,245,245],BORDER=[220,220,220],LRED=[255,240,238];
+
+  function newPage(need) { if(y+need>272){doc.addPage();y=16;return true;}return false; }
+
+  doc.setFillColor(...DARK);doc.rect(0,0,210,22,'F');
+  doc.setFillColor(...RED);doc.rect(0,22,210,1.5,'F');
+  doc.setFillColor(...RED);doc.rect(ML,4,28,13,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);
+  doc.text('HECKELE',ML+2,12.5);
+  doc.setFontSize(7);doc.setFont('helvetica','normal');doc.setTextColor(180,180,180);
+  doc.text('RAUMAUSSTATTER',ML+2,17.5);
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(255,255,255);
+  doc.text('AUFMASS',W-MR,14,{align:'right'});
+  y=30;
+
+  doc.setFillColor(...LGRAY);doc.rect(ML,y,UW,22,'F');
+  doc.setDrawColor(...BORDER);doc.setLineWidth(0.3);doc.rect(ML,y,UW,22);
+  doc.setFontSize(7);doc.setFont('helvetica','bold');doc.setTextColor(...GRAY);
+  doc.text('BAUVORHABEN',ML+3,y+5);doc.text('DATUM',ML+UW*0.55+3,y+5);doc.text('MITARBEITER',ML+3,y+14);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(...DARK);
+  doc.text(bv||'–',ML+3,y+11);doc.text(fmtDate(datum)||'–',ML+UW*0.55+3,y+11);doc.text(ma||'–',ML+3,y+20);
+  doc.setDrawColor(...BORDER);doc.line(ML+UW*0.55,y,ML+UW*0.55,y+22);doc.line(ML,y+12,ML+UW*0.55,y+12);
+  y+=28;
+
+  const cols=[18,22,22,30,30,UW-122];
+  const headers=['Pos','Länge (m)','Breite (m)','Fläche (m²)','Umfang (lm)','Hinweis'];
+
+  for (const [rIdStr,room] of Object.entries(state)) {
+    const rId=parseInt(rIdStr);
+    const rname=document.getElementById('rname-'+rId)?.value||`Raum ${rId}`;
+    const checks=[...document.querySelectorAll(`input[data-room="${rId}"]:checked`)].map(c=>c.value);
+    const rows=Object.entries(room.rows);
+    const imgs=room.images;
+    if(!rows.length&&!imgs.length) continue;
+
+    newPage(12+rows.length*7+10);
+    doc.setFillColor(...DARK);doc.rect(ML,y,UW,9,'F');
+    doc.setFillColor(...RED);doc.rect(ML,y+9,UW,0.8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(255,255,255);
+    doc.text(rname,ML+4,y+6.2);
+    if(checks.length){doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(200,200,200);doc.text(checks.join('  |  '),ML+UW-3,y+6.2,{align:'right'});}
+    y+=10.5;
+
+    doc.setFillColor(...LGRAY);doc.rect(ML,y,UW,6,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...GRAY);
+    let cx=ML;
+    headers.forEach((h,i)=>{doc.text(h,cx+cols[i]/2,y+4.2,{align:'center'});cx+=cols[i];});
+    y+=6;
+
+    let sf=0,su=0,pos=1;
+    for(const [rowId,row] of rows){
+      const hint=document.getElementById(`hint-${rId}-${rowId}`)?.value||'';
+      const rowF = isFinite(row.f) ? row.f : 0;
+      const rowU = isFinite(row.u) ? row.u : 0;
+      sf+=rowF; if(row.sockel) su+=rowU;
+      if(pos%2===0){doc.setFillColor(250,250,250);doc.rect(ML,y,UW,6.5,'F');}
+      cx=ML;
+      const pf=isFinite(row.f)?row.f:0, pu=isFinite(row.u)?row.u:0, pl=isFinite(row.l)?row.l:0, pb=isFinite(row.b)?row.b:0;
+      [String(pos),pl?fmt(pl):'–',pb?fmt(pb):'–',fmt(pf)+' m²',(row.sockel?'✓ ':'')+fmt(pu)+' lm',hint].forEach((v,i)=>{
+        doc.setTextColor(...(i>=3&&i<=4?RED:DARK));
+        doc.setFont('helvetica',i>=3&&i<=4?'bold':'normal');
+        doc.setFontSize(i===4?7:8);
+        doc.text(v,cx+cols[i]/2,y+4.5,{align:'center',maxWidth:cols[i]-2});
+        cx+=cols[i];
+      });
+      doc.setDrawColor(...BORDER);doc.setLineWidth(0.2);doc.line(ML,y+6.5,ML+UW,y+6.5);
+      y+=6.5;pos++;
+    }
+
+    doc.setFillColor(...LRED);doc.rect(ML,y,UW,7,'F');
+    doc.setDrawColor(...RED);doc.setLineWidth(0.4);doc.line(ML,y,ML+UW,y);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...RED);
+    doc.text(`Σ ${rname}`,ML+UW*0.45,y+4.8,{align:'right'});
+    doc.text(`${fmt(sf)} m²`,ML+UW*0.45+cols[3]/2+2,y+4.8,{align:'center'});
+    doc.text(`Sockel: ${fmt(su)} lm`,ML+UW*0.45+cols[3]+cols[4]/2,y+4.8,{align:'center'});
+    y+=10;
+
+    if(imgs.length>0){
+      newPage(10);
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...GRAY);
+      doc.text('FOTOS – '+rname.toUpperCase(),ML,y);y+=5;
+      const imgW=42,imgH=34,gap=4;
+      const perRow=Math.floor(UW/(imgW+gap));
+      let col=0;
+      for(const img of imgs){
+        newPage(imgH+12);
+        const x=ML+col*(imgW+gap);
+        try{
+          doc.setDrawColor(...BORDER);doc.setLineWidth(0.3);doc.rect(x,y,imgW,imgH);
+          doc.addImage(img.dataUrl,'JPEG',x,y,imgW,imgH,undefined,'FAST');
+          if(img.caption){doc.setFillColor(0,0,0);doc.rect(x,y+imgH-6,imgW,6,'F');doc.setFont('helvetica','normal');doc.setFontSize(6);doc.setTextColor(255,255,255);doc.text(img.caption,x+imgW/2,y+imgH-2,{align:'center',maxWidth:imgW-2});}
+        }catch(e){}
+        col++;if(col>=perRow){col=0;y+=imgH+gap+2;}
+      }
+      if(col>0)y+=imgH+gap+2;y+=4;
+    }
+  }
+
+  // Calculate how many art rows we have
+  const artCount = ARTEN.filter(a=>(pdfGrand[a]?.m2||0)>0||(pdfGrand[a]?.m||0)>0).length;
+  const totBoxH = Math.max(14, artCount*8+6);
+  newPage(totBoxH+4);
+  doc.setFillColor(...LRED);doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.rect(ML,y,UW,totBoxH,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...DARK);
+  doc.text('GESAMTÜBERSICHT',ML+5,y+6);
+  doc.setTextColor(...RED);doc.setFontSize(11);
+  // Calculate totals directly from state (iOS-safe, no DOM dependency)
+  const pdfGrand={};
+  ARTEN.forEach(a=>pdfGrand[a]={m2:0,m:0});
+  for(const room of Object.values(state))
+    for(const r of Object.values(room.rows)){
+      const art=r.art||'Boden';
+      if(r.einheit==='m2') pdfGrand[art].m2+=(isFinite(r.val)?r.val:0);
+      else pdfGrand[art].m+=(isFinite(r.val)?r.val:0);
+    }
+  let summaryY = y;
+  ARTEN.forEach((art, idx) => {
+    const v2=pdfGrand[art].m2||0, vm=pdfGrand[art].m||0;
+    if(v2>0||vm>0){
+      const artColor = {'Boden':[21,101,192],'Sockel':[192,57,43],'Silikon':[46,125,50],'Schiene':[106,27,154]}[art]||RED;
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...DARK);
+      doc.text(art+':', ML+5, summaryY+6);
+      doc.setTextColor(...artColor); doc.setFontSize(10);
+      let valStr = '';
+      if(v2>0) valStr += fmt(v2)+' m²';
+      if(v2>0&&vm>0) valStr += '  +  ';
+      if(vm>0) valStr += fmt(vm)+' m';
+      doc.text(valStr, ML+28, summaryY+6);
+      summaryY += 8;
+    }
+  });
+  y = summaryY + 4;
+  y+=20;
+
+  if(notes&&notes.trim()){
+    newPage(20);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...GRAY);
+    doc.text('SONSTIGES / BEMERKUNGEN:',ML,y);y+=5;
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...DARK);
+    const lines=doc.splitTextToSize(notes,UW);doc.text(lines,ML,y);
+  }
+
+  const pc=doc.internal.getNumberOfPages();
+  for(let p=1;p<=pc;p++){
+    doc.setPage(p);doc.setFillColor(...DARK);doc.rect(0,291,210,6,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(160,160,160);
+    doc.text('Heckele Raumausstatter',ML,294.5);
+    doc.text('Aufmass-Formular',105,294.5,{align:'center'});
+    doc.text(`Seite ${p} / ${pc}`,W-MR,294.5,{align:'right'});
+  }
+
+  const fn=`Aufmass_${(bv||'Heckele').replace(/\s+/g,'_')}_${fmtDate(datum)||'Datum'}.pdf`;
+  doc.save(fn);return fn;
+}
+
+/* ── VALIDATE ── */
+function validateForm() {
+  const bv=document.getElementById('bv').value.trim();
+  const datum=document.getElementById('datum').value;
+  const ma=document.getElementById('ma').value.trim();
+  if(!bv||!datum||!ma){alert('Bitte Bauvorhaben, Datum und Mitarbeiter ausfüllen.');return null;}
+  return {bv,datum,ma,notes:document.getElementById('notes').value.trim()};
+}
+
+/* ── SUBMIT ── */
+function submitForm() {
+  const data=validateForm(); if(!data)return;
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true;document.getElementById('submitText').textContent='PDF wird erstellt...';
+  setTimeout(()=>{
+    try{const fn=generatePDF(data.bv,data.datum,data.ma,data.notes);showToast('✓ PDF gespeichert: '+fn);}
+    catch(e){alert('Fehler: '+e.message);}
+    btn.disabled=false;document.getElementById('submitText').textContent='PDF herunterladen';
+  },100);
+}
+
+function submitAndEmail() {
+  const data=validateForm(); if(!data)return;
+  const to=document.getElementById('email-to').value.trim();
+  if(!to){alert('Bitte E-Mail-Adresse des Empfängers eingeben.');document.getElementById('email-to').focus();return;}
+  const emailBtn=document.getElementById('emailBtn');
+  emailBtn.disabled=true;document.getElementById('emailText').textContent='Wird vorbereitet...';
+  setTimeout(()=>{
+    try{
+      generatePDF(data.bv,data.datum,data.ma,data.notes);
+      const subject=encodeURIComponent(`Aufmaß – ${data.bv} – ${fmtDate(data.datum)}`);
+      const body=encodeURIComponent(buildEmailBody(data.bv,data.datum,data.ma,data.notes));
+      window.location.href=`mailto:${to}?subject=${subject}&body=${body}`;
+      showToast('✓ PDF gespeichert – Mail-App wird geöffnet');
+    }catch(e){alert('Fehler: '+e.message);}
+    emailBtn.disabled=false;document.getElementById('emailText').textContent='Per E-Mail senden';
+  },200);
+}
+
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  document.getElementById('toastMsg').textContent=msg;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),4500);
+}
+
+document.getElementById('datum').valueAsDate=new Date();
+addRoom();addRoom();addRoom();
+</script>
+</body>
+</html>
