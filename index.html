@@ -720,15 +720,7 @@ function generatePDF(bv, datum, ma, notes) {
     }
   }
 
-  // Calculate how many art rows we have
-  const artCount = ARTEN.filter(a=>(pdfGrand[a]?.m2||0)>0||(pdfGrand[a]?.m||0)>0).length;
-  const totBoxH = Math.max(14, artCount*8+6);
-  newPage(totBoxH+4);
-  doc.setFillColor(...LRED);doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.rect(ML,y,UW,totBoxH,'FD');
-  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...DARK);
-  doc.text('GESAMTÜBERSICHT',ML+5,y+6);
-  doc.setTextColor(...RED);doc.setFontSize(11);
-  // Calculate totals directly from state (iOS-safe, no DOM dependency)
+  // Calculate totals directly from state FIRST (iOS-safe, no DOM dependency)
   const pdfGrand={};
   ARTEN.forEach(a=>pdfGrand[a]={m2:0,m:0});
   for(const room of Object.values(state))
@@ -737,24 +729,30 @@ function generatePDF(bv, datum, ma, notes) {
       if(r.einheit==='m2') pdfGrand[art].m2+=(isFinite(r.val)?r.val:0);
       else pdfGrand[art].m+=(isFinite(r.val)?r.val:0);
     }
-  let summaryY = y;
-  ARTEN.forEach((art, idx) => {
+  // Now calculate box height based on how many arts have values
+  const artCount = ARTEN.filter(a=>(pdfGrand[a].m2||0)>0||(pdfGrand[a].m||0)>0).length;
+  const totBoxH = Math.max(16, artCount*9+10);
+  newPage(totBoxH+4);
+  doc.setFillColor(...LRED);doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.rect(ML,y,UW,totBoxH,'FD');
+  doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...DARK);
+  doc.text('GESAMTUEBERSICHT',ML+5,y+7);
+  let summaryY = y+7;
+  ARTEN.forEach(art => {
     const v2=pdfGrand[art].m2||0, vm=pdfGrand[art].m||0;
     if(v2>0||vm>0){
+      summaryY+=8;
       const artColor = {'Boden':[21,101,192],'Sockel':[192,57,43],'Silikon':[46,125,50],'Schiene':[106,27,154]}[art]||RED;
       doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...DARK);
-      doc.text(art+':', ML+5, summaryY+6);
-      doc.setTextColor(...artColor); doc.setFontSize(10);
+      doc.text(art+':', ML+5, summaryY);
+      doc.setTextColor(...artColor); doc.setFontSize(9);
       let valStr = '';
-      if(v2>0) valStr += fmt(v2)+' m²';
-      if(v2>0&&vm>0) valStr += '  +  ';
+      if(v2>0) valStr += fmt(v2)+' m2';
+      if(v2>0&&vm>0) valStr += ' + ';
       if(vm>0) valStr += fmt(vm)+' m';
-      doc.text(valStr, ML+28, summaryY+6);
-      summaryY += 8;
+      doc.text(valStr, ML+28, summaryY);
     }
   });
-  y = summaryY + 4;
-  y+=20;
+  y = y + totBoxH + 8;
 
   if(notes&&notes.trim()){
     newPage(20);
