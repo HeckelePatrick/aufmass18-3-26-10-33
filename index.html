@@ -598,10 +598,11 @@ function buildEmailBody(bv, datum, ma, notes) {
   ARTEN.forEach(a=>grand2[a]={m2:0,m:0});
   for(const room of Object.values(state)) for(const r of Object.values(room.rows)){
     const art=r.art||'Boden';
-    if(r.einheit==='m2') grand2[art].m2+=r.val; else grand2[art].m+=r.val;
+    const safeVal=isFinite(r.val)?r.val:0;
+    if(r.einheit==='m2') grand2[art].m2+=safeVal; else grand2[art].m+=safeVal;
   }
   ARTEN.forEach(art=>{
-    const v2=grand2[art].m2,vm=grand2[art].m;
+    const v2=grand2[art].m2||0, vm=grand2[art].m||0;
     if(v2>0||vm>0){
       let s=`  ${art}: `;
       if(v2>0) s+=`${fmt(v2)} m²`;
@@ -719,16 +720,40 @@ function generatePDF(bv, datum, ma, notes) {
     }
   }
 
-  newPage(18);
-  doc.setFillColor(...LRED);doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.rect(ML,y,UW,14,'FD');
+  // Calculate how many art rows we have
+  const artCount = ARTEN.filter(a=>(pdfGrand[a]?.m2||0)>0||(pdfGrand[a]?.m||0)>0).length;
+  const totBoxH = Math.max(14, artCount*8+6);
+  newPage(totBoxH+4);
+  doc.setFillColor(...LRED);doc.setDrawColor(...RED);doc.setLineWidth(0.8);doc.rect(ML,y,UW,totBoxH,'FD');
   doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...DARK);
-  doc.text('Gesamtflache (m²):',ML+5,y+6);
+  doc.text('GESAMTÜBERSICHT',ML+5,y+6);
   doc.setTextColor(...RED);doc.setFontSize(11);
-  doc.text(document.getElementById('total-f').textContent+' m²',ML+55,y+6);
-  doc.setTextColor(...DARK);doc.setFontSize(9);
-  doc.text('Gesamtumfang / Sockel (lm):',ML+UW*0.5+5,y+6);
-  doc.setTextColor(...RED);doc.setFontSize(11);
-  doc.text(document.getElementById('total-u').textContent+' lm',ML+UW*0.5+65,y+6);
+  // Calculate totals directly from state (iOS-safe, no DOM dependency)
+  const pdfGrand={};
+  ARTEN.forEach(a=>pdfGrand[a]={m2:0,m:0});
+  for(const room of Object.values(state))
+    for(const r of Object.values(room.rows)){
+      const art=r.art||'Boden';
+      if(r.einheit==='m2') pdfGrand[art].m2+=(isFinite(r.val)?r.val:0);
+      else pdfGrand[art].m+=(isFinite(r.val)?r.val:0);
+    }
+  let summaryY = y;
+  ARTEN.forEach((art, idx) => {
+    const v2=pdfGrand[art].m2||0, vm=pdfGrand[art].m||0;
+    if(v2>0||vm>0){
+      const artColor = {'Boden':[21,101,192],'Sockel':[192,57,43],'Silikon':[46,125,50],'Schiene':[106,27,154]}[art]||RED;
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...DARK);
+      doc.text(art+':', ML+5, summaryY+6);
+      doc.setTextColor(...artColor); doc.setFontSize(10);
+      let valStr = '';
+      if(v2>0) valStr += fmt(v2)+' m²';
+      if(v2>0&&vm>0) valStr += '  +  ';
+      if(vm>0) valStr += fmt(vm)+' m';
+      doc.text(valStr, ML+28, summaryY+6);
+      summaryY += 8;
+    }
+  });
+  y = summaryY + 4;
   y+=20;
 
   if(notes&&notes.trim()){
