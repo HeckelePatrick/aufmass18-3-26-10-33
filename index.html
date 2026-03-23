@@ -136,6 +136,16 @@ body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f0ee; color: #
   .actions-grid { grid-template-columns: 1fr 1fr; }
   .btn-print-wrap { grid-column: 1 / -1; }
 }
+
+@media print {
+  .page-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .actions-grid, .email-field, .add-room-btn, .add-row-btn,
+  .del-row-btn, .del-room-btn, .toggle-btn, .toast,
+  .upload-btn-label, .img-del-btn, .img-caption-inp { display: none !important; }
+  .card { box-shadow: none; border: 1px solid #ddd; }
+  .container { padding: 0; }
+  body { background: white; }
+}
 </style>
 </head>
 <body>
@@ -293,7 +303,7 @@ function handleImages(rId, input) {
   Array.from(input.files).forEach(file => {
     const reader = new FileReader();
     reader.onload = e => {
-      const imgId = Date.now() + Math.random();
+      const imgId = String(Date.now()) + '_' + String(Math.floor(Math.random()*100000));
       state[rId].images.push({ id: imgId, dataUrl: e.target.result, caption: '' });
       renderImageGrid(rId);
     };
@@ -646,8 +656,8 @@ function generatePDF(bv, datum, ma, notes) {
   doc.setDrawColor(...BORDER);doc.line(ML+UW*0.55,y,ML+UW*0.55,y+22);doc.line(ML,y+12,ML+UW*0.55,y+12);
   y+=28;
 
-  const cols=[18,22,22,30,30,UW-122];
-  const headers=['Pos','Länge (m)','Breite (m)','Fläche (m²)','Umfang (lm)','Hinweis'];
+  const cols=[12,24,18,22,22,28,UW-126];
+  const headers=['Pos','Art','Einheit','Maß 1','Maß 2','Ergebnis','Hinweis'];
 
   for (const [rIdStr,room] of Object.entries(state)) {
     const rId=parseInt(rIdStr);
@@ -671,32 +681,46 @@ function generatePDF(bv, datum, ma, notes) {
     headers.forEach((h,i)=>{doc.text(h,cx+cols[i]/2,y+4.2,{align:'center'});cx+=cols[i];});
     y+=6;
 
-    let sf=0,su=0,pos=1;
+    let artSumsPdf={};ARTEN.forEach(a=>artSumsPdf[a]={m2:0,m:0});
+    let pos=1;
     for(const [rowId,row] of rows){
-      const hint=document.getElementById(`hint-${rId}-${rowId}`)?.value||'';
-      const rowF = isFinite(row.f) ? row.f : 0;
-      const rowU = isFinite(row.u) ? row.u : 0;
-      sf+=rowF; if(row.sockel) su+=rowU;
+      newPage(7);
+      const hint=document.getElementById(`hint-${rId}-${rowId}`)?.value||row.hint||'';
+      const einheit=row.einheit||'m2';
+      const art=row.art||'Boden';
+      const m1=isFinite(row.m1)?row.m1:0;
+      const m2=isFinite(row.m2)?row.m2:0;
+      const val=isFinite(row.val)?row.val:0;
+      if(einheit==='m2') artSumsPdf[art].m2+=val; else artSumsPdf[art].m+=val;
+      const artColor={'Boden':[21,101,192],'Sockel':[192,57,43],'Silikon':[46,125,50],'Schiene':[106,27,154]}[art]||RED;
       if(pos%2===0){doc.setFillColor(250,250,250);doc.rect(ML,y,UW,6.5,'F');}
       cx=ML;
-      const pf=isFinite(row.f)?row.f:0, pu=isFinite(row.u)?row.u:0, pl=isFinite(row.l)?row.l:0, pb=isFinite(row.b)?row.b:0;
-      [String(pos),pl?fmt(pl):'–',pb?fmt(pb):'–',fmt(pf)+' m²',(row.sockel?'✓ ':'')+fmt(pu)+' lm',hint].forEach((v,i)=>{
-        doc.setTextColor(...(i>=3&&i<=4?RED:DARK));
-        doc.setFont('helvetica',i>=3&&i<=4?'bold':'normal');
-        doc.setFontSize(i===4?7:8);
-        doc.text(v,cx+cols[i]/2,y+4.5,{align:'center',maxWidth:cols[i]-2});
-        cx+=cols[i];
-      });
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...DARK);
+      doc.text(String(pos),cx+cols[0]/2,y+4.5,{align:'center'});cx+=cols[0];
+      doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...artColor);
+      doc.text(art,cx+cols[1]/2,y+4.5,{align:'center',maxWidth:cols[1]-1});cx+=cols[1];
+      doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...DARK);
+      doc.text(einheit==='m2'?'m²':'m',cx+cols[2]/2,y+4.5,{align:'center'});cx+=cols[2];
+      doc.text(m1?fmt(m1):'–',cx+cols[3]/2,y+4.5,{align:'center'});cx+=cols[3];
+      doc.text(einheit==='m2'?(m2?fmt(m2):'–'):'–',cx+cols[4]/2,y+4.5,{align:'center'});cx+=cols[4];
+      doc.setFont('helvetica','bold');doc.setTextColor(...artColor);
+      doc.text(fmt(val)+' '+(einheit==='m2'?'m²':'m'),cx+cols[5]/2,y+4.5,{align:'center',maxWidth:cols[5]-1});cx+=cols[5];
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GRAY);
+      if(hint) doc.text(hint,cx+cols[6]/2,y+4.5,{align:'center',maxWidth:cols[6]-2});
       doc.setDrawColor(...BORDER);doc.setLineWidth(0.2);doc.line(ML,y+6.5,ML+UW,y+6.5);
       y+=6.5;pos++;
     }
-
     doc.setFillColor(...LRED);doc.rect(ML,y,UW,7,'F');
     doc.setDrawColor(...RED);doc.setLineWidth(0.4);doc.line(ML,y,ML+UW,y);
     doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...RED);
-    doc.text(`Σ ${rname}`,ML+UW*0.45,y+4.8,{align:'right'});
-    doc.text(`${fmt(sf)} m²`,ML+UW*0.45+cols[3]/2+2,y+4.8,{align:'center'});
-    doc.text(`Sockel: ${fmt(su)} lm`,ML+UW*0.45+cols[3]+cols[4]/2,y+4.8,{align:'center'});
+    doc.text('Σ '+rname,ML+4,y+4.8);
+    let sumParts=[];
+    ARTEN.forEach(a=>{
+      const v2=artSumsPdf[a].m2||0,vm=artSumsPdf[a].m||0;
+      if(v2>0) sumParts.push(a+': '+fmt(v2)+' m²');
+      if(vm>0) sumParts.push(a+': '+fmt(vm)+' m');
+    });
+    doc.text(sumParts.join('   '),ML+UW,y+4.8,{align:'right',maxWidth:UW*0.65});
     y+=10;
 
     if(imgs.length>0){
@@ -746,7 +770,7 @@ function generatePDF(bv, datum, ma, notes) {
       doc.text(art+':', ML+5, summaryY);
       doc.setTextColor(...artColor); doc.setFontSize(9);
       let valStr = '';
-      if(v2>0) valStr += fmt(v2)+' m2';
+      if(v2>0) valStr += fmt(v2)+' m²';
       if(v2>0&&vm>0) valStr += ' + ';
       if(vm>0) valStr += fmt(vm)+' m';
       doc.text(valStr, ML+28, summaryY);
@@ -845,9 +869,9 @@ function showEmailOverlay(to, subject, bodyText, subjectRaw, bv, datum, ma) {
       <div style="padding:14px 20px;border-bottom:1px solid #eee;flex-shrink:0;">
         <div style="display:grid;grid-template-columns:60px 1fr;gap:4px 10px;font-size:13px;">
           <span style="color:#aaa;font-weight:700;text-transform:uppercase;font-size:11px;padding-top:2px;">An</span>
-          <span style="color:#222;">${to}</span>
+          <span id="overlay-to-val" style="color:#222;"></span>
           <span style="color:#aaa;font-weight:700;text-transform:uppercase;font-size:11px;padding-top:2px;">Betreff</span>
-          <span style="color:#222;">${subject}</span>
+          <span id="overlay-subject-val" style="color:#222;"></span>
         </div>
       </div>
       <div style="padding:10px 20px;border-bottom:1px solid #eee;background:#fff8f7;flex-shrink:0;display:flex;align-items:center;gap:10px;">
@@ -875,6 +899,8 @@ function showEmailOverlay(to, subject, bodyText, subjectRaw, bv, datum, ma) {
     </div>
   `;
   document.body.appendChild(overlay);
+  document.getElementById('overlay-to-val').textContent=to;
+  document.getElementById('overlay-subject-val').textContent=subject;
   document.getElementById('email-body-text').value=bodyText;
 }
 
