@@ -804,14 +804,101 @@ function submitAndEmail() {
   emailBtn.disabled=true;document.getElementById('emailText').textContent='Wird vorbereitet...';
   setTimeout(()=>{
     try{
+      // 1) PDF herunterladen
       generatePDF(data.bv,data.datum,data.ma,data.notes);
-      const subject=encodeURIComponent(`Aufmaß – ${data.bv} – ${fmtDate(data.datum)}`);
-      const body=encodeURIComponent(buildEmailBody(data.bv,data.datum,data.ma,data.notes));
-      window.location.href=`mailto:${to}?subject=${subject}&body=${body}`;
-      showToast('✓ PDF gespeichert – Mail-App wird geöffnet');
+      // 2) Vollständigen E-Mail-Text aufbauen
+      const bodyText=buildEmailBody(data.bv,data.datum,data.ma,data.notes);
+      const subject=`Aufmaß – ${data.bv} – ${fmtDate(data.datum)}`;
+      const encoded=encodeURIComponent(bodyText);
+      const mailtoUrl=`mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encoded}`;
+      // 3) Prüfen ob mailto-URL zu lang ist (Browsergrenze ~8000 Zeichen)
+      if(mailtoUrl.length>8000){
+        // Zu lang: Overlay mit Kopieren-Option zeigen
+        showEmailOverlay(to, subject, bodyText, subject, data.bv, data.datum, data.ma);
+      } else {
+        // Passt: direkt Mail-App öffnen
+        const a=document.createElement('a');
+        a.href=mailtoUrl;
+        a.style.display='none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(()=>a.remove(),500);
+        showToast('✓ PDF gespeichert – Mail-App wird geöffnet');
+      }
     }catch(e){alert('Fehler: '+e.message);}
     emailBtn.disabled=false;document.getElementById('emailText').textContent='Per E-Mail senden';
   },200);
+}
+
+function showEmailOverlay(to, subject, bodyText, subjectRaw, bv, datum, ma) {
+  const existing=document.getElementById('email-overlay');
+  if(existing) existing.remove();
+  const overlay=document.createElement('div');
+  overlay.id='email-overlay';
+  overlay.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;';
+  overlay.innerHTML=`
+    <div style="background:white;border-radius:12px;max-width:600px;width:100%;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.3);">
+      <div style="background:#1a1a1a;border-radius:12px 12px 0 0;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <div style="color:white;font-weight:700;font-size:16px;">✉ E-Mail versenden</div>
+        <button onclick="document.getElementById('email-overlay').remove()" style="background:none;border:none;color:#aaa;font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;">✕</button>
+      </div>
+      <div style="padding:14px 20px;border-bottom:1px solid #eee;flex-shrink:0;">
+        <div style="display:grid;grid-template-columns:60px 1fr;gap:4px 10px;font-size:13px;">
+          <span style="color:#aaa;font-weight:700;text-transform:uppercase;font-size:11px;padding-top:2px;">An</span>
+          <span style="color:#222;">${to}</span>
+          <span style="color:#aaa;font-weight:700;text-transform:uppercase;font-size:11px;padding-top:2px;">Betreff</span>
+          <span style="color:#222;">${subject}</span>
+        </div>
+      </div>
+      <div style="padding:10px 20px;border-bottom:1px solid #eee;background:#fff8f7;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:18px;">📎</span>
+        <div>
+          <div style="font-size:12px;font-weight:700;color:#C0392B;">PDF wurde heruntergeladen</div>
+          <div style="font-size:11px;color:#888;">Das Aufmaß-PDF bitte manuell als Anhang einfügen.</div>
+        </div>
+      </div>
+      <div style="padding:10px 20px;border-bottom:1px solid #eee;background:#fffbe6;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:16px;">ℹ️</span>
+        <div style="font-size:11px;color:#888;">Der Text ist zu lang für einen direkten Mail-Link. Bitte unten kopieren und in Ihre Mail-App einfügen.</div>
+      </div>
+      <div style="padding:12px 20px;flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-shrink:0;">
+          <span style="font-size:11px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:0.5px;">Aufmaß-Inhalt (vollständig)</span>
+          <button id="copy-btn" onclick="copyEmailText()" style="background:#C0392B;color:white;border:none;border-radius:5px;padding:7px 16px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">📋 Text kopieren</button>
+        </div>
+        <textarea id="email-body-text" readonly style="flex:1;border:1px solid #ddd;border-radius:6px;padding:10px;font-family:monospace;font-size:12px;resize:none;color:#333;background:#fafafa;min-height:0;"></textarea>
+      </div>
+      <div style="padding:14px 20px;border-top:1px solid #eee;display:grid;grid-template-columns:1fr 1fr;gap:10px;flex-shrink:0;">
+        <button onclick="openMailFallback('${encodeURIComponent(to)}','${encodeURIComponent(subject)}')" style="padding:12px;background:#1565c0;color:white;border:none;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;">✉ Mail-App öffnen</button>
+        <button onclick="document.getElementById('email-overlay').remove()" style="padding:12px;background:#f5f5f5;border:1px solid #ddd;border-radius:6px;font-weight:600;font-size:14px;cursor:pointer;color:#555;">Schließen</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  document.getElementById('email-body-text').value=bodyText;
+}
+
+function openMailFallback(encodedTo, encodedSubject) {
+  const to=decodeURIComponent(encodedTo);
+  const subject=decodeURIComponent(encodedSubject);
+  const hint='Aufmaß anbei als PDF.\n\n(Vollständigen Text bitte aus dem Formular kopieren und hier einfügen.)';
+  window.location.href=`mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(hint)}`;
+}
+
+function copyEmailText() {
+  const ta=document.getElementById('email-body-text');
+  const btn=document.getElementById('copy-btn');
+  const success=()=>{
+    btn.textContent='✓ Kopiert!';btn.style.background='#2e7d32';
+    setTimeout(()=>{btn.textContent='📋 Text kopieren';btn.style.background='#C0392B';},2500);
+  };
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(ta.value).then(success).catch(()=>{
+      ta.select();document.execCommand('copy');success();
+    });
+  } else {
+    ta.select();document.execCommand('copy');success();
+  }
 }
 
 function showToast(msg) {
